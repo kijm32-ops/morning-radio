@@ -32,10 +32,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
-          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
-          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
-          PLAYER_BASE_URL: ${{ vars.PLAYER_BASE_URL }}
         run: python -m morning_radio.main --source-mode '${{ inputs.source_mode }}'
       - name: Upload diagnostic artifact
         if: always()
@@ -68,6 +64,8 @@ jobs:
   notify:
     needs: deploy
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -84,5 +82,17 @@ jobs:
         env:
           KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
-          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+          KAKAO_TOKEN_ENCRYPTION_KEY: ${{ secrets.KAKAO_TOKEN_ENCRYPTION_KEY }}
         run: python -m morning_radio.notify --plan output/episode-plan.json --url '${{ needs.deploy.outputs.page_url }}'
+      - name: Persist rotated Kakao refresh token
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/kakao_auth.json
+          if git diff --cached --quiet; then
+            echo "Kakao refresh token unchanged."
+          else
+            git commit -m "chore: rotate Kakao refresh token [skip ci]"
+            git push
+          fi
