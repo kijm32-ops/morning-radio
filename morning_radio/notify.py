@@ -18,9 +18,7 @@ def main() -> int:
     load_dotenv()
     settings = Settings.from_env()
     plan = EpisodePlan.model_validate_json(args.plan.read_text(encoding="utf-8"))
-    rotated = send_ready_message(settings, plan, args.url or None)
-    if rotated:
-        print("WARNING: Kakao returned a rotated refresh token. Update KAKAO_REFRESH_TOKEN secret before the old token expires.")
+    send_ready_message(settings, plan, args.url or None)
     return 0
 
 

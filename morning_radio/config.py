@@ -27,7 +27,7 @@ class Settings:
     target_minutes: int
     kakao_rest_api_key: str
     kakao_client_secret: str
-    kakao_refresh_token: str
+    kakao_token_encryption_key: str
     player_base_url: str
 
     @classmethod
@@ -47,7 +47,7 @@ class Settings:
             target_minutes=_int_env("TARGET_MINUTES", 18),
             kakao_rest_api_key=os.getenv("KAKAO_REST_API_KEY", "").strip(),
             kakao_client_secret=os.getenv("KAKAO_CLIENT_SECRET", "").strip(),
-            kakao_refresh_token=os.getenv("KAKAO_REFRESH_TOKEN", "").strip(),
+            kakao_token_encryption_key=os.getenv("KAKAO_TOKEN_ENCRYPTION_KEY", "").strip(),
             player_base_url=os.getenv(
                 "PLAYER_BASE_URL",
                 "https://kijm32-ops.github.io/morning-radio/",
