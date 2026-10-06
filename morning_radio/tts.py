@@ -7,6 +7,7 @@ from google import genai
 
 from .config import Settings
 from .models import EpisodePlan, PodcastSegment
+from .retry import call_with_retry
 
 
 class TTSError(RuntimeError):
@@ -45,19 +46,22 @@ def synthesize_segments(
     paths: list[Path] = []
 
     for index, segment in enumerate(plan.segments, start=1):
-        interaction = client.interactions.create(
-            model=settings.tts_model,
-            input=[{"type": "user_input", "content": _turn_content(segment)}],
-            response_format={"type": "audio"},
-            generation_config={
-                "speech_config": {
-                    "mode": "conversational",
-                    "speakers": [
-                        {"speaker": "HostA", "voice": settings.voice_a},
-                        {"speaker": "HostB", "voice": settings.voice_b},
-                    ],
-                }
-            },
+        interaction = call_with_retry(
+            lambda segment=segment: client.interactions.create(
+                model=settings.tts_model,
+                input=[{"type": "user_input", "content": _turn_content(segment)}],
+                response_format={"type": "audio"},
+                generation_config={
+                    "speech_config": {
+                        "mode": "conversational",
+                        "speakers": [
+                            {"speaker": "HostA", "voice": settings.voice_a},
+                            {"speaker": "HostB", "voice": settings.voice_b},
+                        ],
+                    }
+                },
+            ),
+            label=f"tts segment {index}",
         )
         audio = getattr(interaction, "output_audio", None)
         data = getattr(audio, "data", None) if audio else None

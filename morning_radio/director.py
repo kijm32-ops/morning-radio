@@ -7,6 +7,7 @@ from google import genai
 
 from .config import Settings
 from .models import EpisodePlan, SourceDocument
+from .retry import call_with_retry
 
 KST = ZoneInfo("Asia/Seoul")
 
@@ -78,14 +79,17 @@ style은 짧은 영어 구문으로 작성해도 된다.
 """
 
     client = genai.Client(api_key=settings.gemini_api_key)
-    interaction = client.interactions.create(
-        model=settings.director_model,
-        input=prompt,
-        response_format={
-            "type": "text",
-            "mime_type": "application/json",
-            "schema": EpisodePlan.model_json_schema(),
-        },
-        generation_config={"thinking_level": "high"},
+    interaction = call_with_retry(
+        lambda: client.interactions.create(
+            model=settings.director_model,
+            input=prompt,
+            response_format={
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": EpisodePlan.model_json_schema(),
+            },
+            generation_config={"thinking_level": "high"},
+        ),
+        label="director",
     )
     return EpisodePlan.model_validate_json(interaction.output_text)
