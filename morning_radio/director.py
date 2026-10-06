@@ -3,9 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from google import genai
-
 from .config import Settings
+from .gemini import make_client
 from .models import EpisodePlan, SourceDocument
 from .retry import call_with_retry
 
@@ -80,7 +79,7 @@ style은 짧은 영어 구문으로 작성해도 된다.
 {source_text}
 """
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = make_client(settings.gemini_api_key)
     interaction = call_with_retry(
         lambda: client.interactions.create(
             model=settings.director_model,
