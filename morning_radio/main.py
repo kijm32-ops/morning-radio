@@ -34,6 +34,8 @@ def main() -> int:
         if args.source_mode == "gmail"
         else collect_from_directory(args.source_dir)
     )
+    for item in sources:
+        print(f"[source] {item.source}: {item.status}" + (f" - {item.text}" if item.status == "failed" else ""))
     ok_sources = [item for item in sources if item.status != "failed"]
     if not ok_sources:
         raise RuntimeError("WORLD/MORNING/PTIS 소스가 모두 실패했습니다.")
