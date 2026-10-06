@@ -10,6 +10,9 @@ from .models import EpisodePlan, PodcastSegment
 from .retry import call_with_retry
 
 
+TTS_TIMEOUT_SECONDS = 300.0
+
+
 class TTSError(RuntimeError):
     pass
 
@@ -60,6 +63,7 @@ def synthesize_segments(
                         ],
                     }
                 },
+                timeout=TTS_TIMEOUT_SECONDS,
             ),
             label=f"tts segment {index}",
         )

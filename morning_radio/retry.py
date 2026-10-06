@@ -15,6 +15,7 @@ _TRANSIENT_MARKERS = (
     "overloaded",
     "resource_exhausted",
     "deadline exceeded",
+    "timed out",
     "rate limit",
 )
 _STATUS_IN_MESSAGE = re.compile(r"error code:\s*(\d{3})", re.IGNORECASE)
@@ -22,6 +23,8 @@ _STATUS_IN_MESSAGE = re.compile(r"error code:\s*(\d{3})", re.IGNORECASE)
 
 def is_transient(exc: BaseException) -> bool:
     """일시적인 서버/쿼터 오류인지 판단한다. 인증·요청 오류(4xx)는 재시도하지 않는다."""
+    if "timeout" in type(exc).__name__.lower():
+        return True
     status = getattr(exc, "status_code", None)
     if isinstance(status, int):
         return status in _TRANSIENT_STATUS

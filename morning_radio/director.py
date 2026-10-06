@@ -10,6 +10,8 @@ from .models import EpisodePlan, SourceDocument
 from .retry import call_with_retry
 
 KST = ZoneInfo("Asia/Seoul")
+# 응답이 없는 호출이 Actions 작업을 무한정 붙잡지 않도록 요청마다 제한한다.
+DIRECTOR_TIMEOUT_SECONDS = 600.0
 
 
 DIRECTOR_RULES = """
@@ -89,6 +91,7 @@ style은 짧은 영어 구문으로 작성해도 된다.
                 "schema": EpisodePlan.model_json_schema(),
             },
             generation_config={"thinking_level": "high"},
+            timeout=DIRECTOR_TIMEOUT_SECONDS,
         ),
         label="director",
     )
