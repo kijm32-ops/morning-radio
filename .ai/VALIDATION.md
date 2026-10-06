@@ -1,11 +1,11 @@
 # Validation
 
-?꾨옒??`.github/workflows/validate.yml`???ㅼ젣濡??ㅽ뻾?섎뒗 寃利앹씠??
+아래는 `.github/workflows/validate.yml`이 실제로 실행하는 검증이다.
 
 ## Pre-check
 
 - `git status`
-- placeholder 寃?? `<REQUIRED:`
+- placeholder 검사: `<REQUIRED:`
 
 ## Backend
 
@@ -15,15 +15,15 @@
 
 ## Frontend
 
-- `tests/test_player.py`媛 ?뚮젅?댁뼱瑜?寃利앺븳??(??pytest???ы븿).
+- `tests/test_player.py`가 플레이어를 검증한다 (위 pytest에 포함).
 
 ## Database
 
-- ?놁쓬
+- 없음
 
 ## Final
 
 - `git diff --check`
 - `git diff`
-- ?덉긽 ???뚯씪 蹂寃??щ? ?뺤씤
-- 鍮꾨?媛믪씠 diff???욎씠吏 ?딆븯?붿? ?뺤씤
+- 예상 외 파일 변경 여부 확인
+- 비밀값이 diff에 섞이지 않았는지 확인

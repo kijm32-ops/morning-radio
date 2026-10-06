@@ -2,34 +2,35 @@
 
 ## Purpose
 
-MORNING RADIO. WORLD BRIEFING, MORNING BRIEFING, PTIS 寃곌낵瑜?諛뷀깢?쇰줈 ??AI 吏꾪뻾?먭? ?곌껐쨌?댁꽍쨌諛섎줎??二쇨퀬諛쏅뒗 異쒓렐湲??잛틦?ㅽ듃瑜??앹꽦?쒕떎. ????μ냼??鍮꾧났媛?private)??
+MORNING RADIO. WORLD BRIEFING, MORNING BRIEFING, PTIS 결과를 바탕으로 두 AI 진행자가 연결·해석·반론을 주고받는 출근길 팟캐스트를 생성한다. 이 저장소는 비공개(private)다.
 
 ## Architecture
 
-- Frontend: 紐⑤컮???뚮젅?댁뼱 (README ?뚯씠?꾨씪?몄뿉 ?ы븿, `tests/test_player.py`媛 寃利?
-- Backend: Python ?뚯씠?꾨씪??`Gmail ??Gemini Director ??2???????Gemini TTS ??MP3 ??mobile player ??Kakao`. 紐⑤뜽? README 湲곗? Director `gemini-3.8-flash`, Voice `gemini-3.8-flash-tts`
-- Database: ?놁쓬. `data/` ?붾젆?곕━媛 ?덈떎 (?댁슜? ?뺤씤?섏? ?딆븯??
+- Frontend: 모바일 플레이어 (README 파이프라인에 포함, `tests/test_player.py`가 검증)
+- Backend: Python 파이프라인 `Gmail → Gemini Director → 2인 대화 → Gemini TTS → MP3 → mobile player → Kakao`. 모델은 README 기준 Director `gemini-3.8-flash`, Voice `gemini-3.8-flash-tts`
+- Database: 없음. `data/` 디렉터리가 있다 (내용은 확인하지 않았다)
 
 ## Important directories
 
-- `morning_radio/` ???뚯씠?꾨씪???뚯뒪
-- `tests/` ??pytest (`test_kakao_auth`, `test_models`, `test_player`, `test_sources`)
-- `data/` ???고????곗씠??- `.github/workflows/` ??`build-radio.yml`, `validate.yml`
-- `.env.example` ???섍꼍蹂??紐⑸줉 (?ㅼ젣 `.env`???щ━吏 ?딅뒗??
+- `morning_radio/` — 파이프라인 소스
+- `tests/` — pytest (`test_kakao_auth`, `test_models`, `test_player`, `test_sources`)
+- `data/` — 런타임 데이터
+- `.github/workflows/` — `build-radio.yml`, `validate.yml`
+- `.env.example` — 환경변수 목록 (실제 `.env`는 올리지 않는다)
 
 ## Environments
 
 ### Development
 
-- Python. CI??3.12瑜??대떎. 濡쒖뺄 ?ㅼ튂 ?곹깭???뺤씤?섏? ?딆븯??
+- Python. CI는 3.12를 쓴다. 로컬 설치 상태는 확인하지 않았다.
 
 ### Production / Deployment target
 
-- GitHub Actions(`build-radio.yml`, ?뺥솗???숈옉? ?뺤씤?섏? ?딆븯??? Kakao ?꾨떖. README ?뚯씠?꾨씪??湲곗?.
+- GitHub Actions(`build-radio.yml`, 정확한 동작은 확인하지 않았다)와 Kakao 전달. README 파이프라인 기준.
 
 ## Invariants
 
-- 湲곗〈 WORLD / MORNING / PTIS ?꾨줈?앺듃???섏젙?섏? ?딅뒗??README 湲곗?).
-- ???뚯뒪媛 ?ㅽ뙣?대룄 ?섎㉧吏濡?遺遺??깃났?섎ŉ, ???뚯뒪媛 紐⑤몢 ?ㅽ뙣???뚮쭔 ?앹꽦?섏? ?딅뒗?? ???숈옉??源⑥? ?딅뒗??
-- Kakao refresh token? ?뚯쟾?쒕떎. ?뚯쟾???좏겙????ν븯???숈옉(`fix: persist Kakao refresh-token rotation`)??源⑥? ?딅뒗??
-- `.env`, API ?? Kakao ?좏겙, Gmail ?몄쬆 ?뺣낫瑜??쎌뼱??異쒕젰?섍굅??commit?섏? ?딅뒗??
+- 기존 WORLD / MORNING / PTIS 프로젝트는 수정하지 않는다(README 기준).
+- 한 소스가 실패해도 나머지로 부분 성공하며, 세 소스가 모두 실패할 때만 생성하지 않는다. 이 동작을 깨지 않는다.
+- Kakao refresh token은 회전한다. 회전된 토큰을 저장하는 동작(`fix: persist Kakao refresh-token rotation`)을 깨지 않는다.
+- `.env`, API 키, Kakao 토큰, Gmail 인증 정보를 읽어서 출력하거나 commit하지 않는다.
