@@ -20,6 +20,15 @@ def test_is_transient_classifies_errors():
     assert not is_transient(ValueError("bad schema"))
 
 
+class ReadTimeout(Exception):
+    pass
+
+
+def test_timeouts_are_transient():
+    assert is_transient(ReadTimeout())
+    assert is_transient(Exception("The read operation timed out"))
+
+
 def test_retries_transient_then_succeeds():
     calls = []
     delays = []
