@@ -20,6 +20,35 @@ def test_is_transient_classifies_errors():
     assert not is_transient(ValueError("bad schema"))
 
 
+DAILY_QUOTA_MESSAGE = (
+    "Error code: 429 - Rate limit exceeded for model gemini-3.8-flash "
+    "(limit: 20 requests per day on Free Tier). Please retry in 8h58m13s"
+)
+
+
+class _DailyQuotaError(Exception):
+    status_code = 429
+
+
+def test_daily_quota_exhaustion_is_not_transient():
+    assert not is_transient(Exception(DAILY_QUOTA_MESSAGE))
+    assert not is_transient(_DailyQuotaError(DAILY_QUOTA_MESSAGE))
+    # A short per-minute rate limit is still worth retrying.
+    assert is_transient(_StatusError(429))
+
+
+def test_daily_quota_is_not_retried():
+    calls = []
+
+    def exhausted():
+        calls.append(1)
+        raise _DailyQuotaError(DAILY_QUOTA_MESSAGE)
+
+    with pytest.raises(_DailyQuotaError):
+        call_with_retry(exhausted, label="t", sleep=lambda _: None)
+    assert len(calls) == 1
+
+
 class ReadTimeout(Exception):
     pass
 
