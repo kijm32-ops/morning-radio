@@ -109,38 +109,91 @@ def _message_datetime(msg: Message) -> datetime:
     return parsed.astimezone(KST)
 
 
-def _latest_subject_message(
-    client: imaplib.IMAP4_SSL,
-    subject_fragment: str,
-    max_age_hours: int,
-) -> GmailHit:
+_LIST_RE = re.compile(rb'\((?P<flags>[^)]*)\)\s+(?:"[^"]*"|NIL)\s+(?P<name>.+)')
+_HEADER_SCAN_LIMIT = 300
+# 소스 브리핑이 실패했을 때 같은 제목 조각으로 오는 오류 알림 메일은 제외한다.
+_EXCLUDED_SUBJECT_MARKERS = ("오류",)
+
+
+@dataclass(frozen=True)
+class _Header:
+    message_id: bytes
+    subject: str
+    received_at: datetime
+
+
+def _all_mail_folder(client: imaplib.IMAP4_SSL) -> str | None:
+    """Gmail의 \\All 폴더 이름을 반환한다. 폴더 이름은 계정 언어에 따라 달라진다."""
+    status, lines = client.list()
+    if status != "OK":
+        return None
+    for line in lines or []:
+        if not isinstance(line, bytes):
+            continue
+        match = _LIST_RE.match(line)
+        if match and b"\\All" in match.group("flags").split():
+            name = match.group("name").decode("ascii", errors="ignore").strip()
+            return name if name.startswith('"') else f'"{name}"'
+    return None
+
+
+def _recent_headers(client: imaplib.IMAP4_SSL, limit: int = _HEADER_SCAN_LIMIT) -> list[_Header]:
     status, data = client.search(None, "ALL")
     if status != "OK":
         raise SourceError("Gmail IMAP 검색에 실패했습니다.")
+    ids = (data[0] or b"").split()[-limit:]
+    if not ids:
+        return []
 
-    message_ids = (data[0] or b"").split()[-120:]
-    cutoff = datetime.now(KST) - timedelta(hours=max_age_hours)
-    candidates: list[GmailHit] = []
+    status, raw = client.fetch(
+        f"{ids[0].decode()}:{ids[-1].decode()}",
+        "(BODY.PEEK[HEADER.FIELDS (SUBJECT DATE)])",
+    )
+    if status != "OK":
+        raise SourceError("Gmail IMAP 헤더 조회에 실패했습니다.")
 
-    for message_id in reversed(message_ids):
-        status, raw = client.fetch(message_id, "(RFC822)")
-        if status != "OK" or not raw or not isinstance(raw[0], tuple):
+    headers: list[_Header] = []
+    for item in raw or []:
+        if not isinstance(item, tuple):
             continue
-        msg = email.message_from_bytes(raw[0][1])
-        subject = _decode_header(msg.get("Subject"))
-        if subject_fragment.lower() not in subject.lower():
-            continue
-        received_at = _message_datetime(msg)
-        if received_at < cutoff:
-            continue
-        candidates.append(GmailHit(subject=subject, received_at=received_at, message=msg))
-        break
-
-    if not candidates:
-        raise SourceError(
-            f"최근 {max_age_hours}시간 내 Gmail에서 제목 '{subject_fragment}' 메일을 찾지 못했습니다."
+        msg = email.message_from_bytes(item[1])
+        headers.append(
+            _Header(
+                message_id=item[0].split()[0],
+                subject=_decode_header(msg.get("Subject")),
+                received_at=_message_datetime(msg),
+            )
         )
-    return candidates[0]
+    headers.sort(key=lambda header: int(header.message_id), reverse=True)
+    return headers
+
+
+def _latest_subject_message(
+    client: imaplib.IMAP4_SSL,
+    headers: list[_Header],
+    subject_fragment: str,
+    max_age_hours: int,
+) -> GmailHit:
+    cutoff = datetime.now(KST) - timedelta(hours=max_age_hours)
+    fragment = subject_fragment.lower()
+
+    for header in headers:
+        subject = header.subject.lower()
+        if fragment not in subject:
+            continue
+        if any(marker in subject for marker in _EXCLUDED_SUBJECT_MARKERS):
+            continue
+        if header.received_at < cutoff:
+            continue
+        status, raw = client.fetch(header.message_id, "(BODY.PEEK[])")
+        if status != "OK" or not raw or not isinstance(raw[0], tuple):
+            raise SourceError(f"'{header.subject}' 메일 본문을 가져오지 못했습니다.")
+        msg = email.message_from_bytes(raw[0][1])
+        return GmailHit(subject=header.subject, received_at=header.received_at, message=msg)
+
+    raise SourceError(
+        f"최근 {max_age_hours}시간 내 Gmail에서 제목 '{subject_fragment}' 메일을 찾지 못했습니다."
+    )
 
 
 def _extract_report_text(hit: GmailHit) -> str:
@@ -164,7 +217,9 @@ def collect_from_gmail(settings: Settings) -> list[SourceDocument]:
     client = imaplib.IMAP4_SSL("imap.gmail.com", 993)
     try:
         client.login(settings.gmail_user, settings.gmail_app_password)
-        client.select("INBOX", readonly=True)
+        # 브리핑 메일은 필터로 보관 처리되어 INBOX에 없을 수 있으므로 전체보관함을 검색한다.
+        client.select(_all_mail_folder(client) or "INBOX", readonly=True)
+        headers = _recent_headers(client)
 
         specs = [
             ("world", settings.world_subject, "WORLD BRIEFING"),
@@ -174,7 +229,7 @@ def collect_from_gmail(settings: Settings) -> list[SourceDocument]:
         docs: list[SourceDocument] = []
         for source, subject, title in specs:
             try:
-                hit = _latest_subject_message(client, subject, settings.source_max_age_hours)
+                hit = _latest_subject_message(client, headers, subject, settings.source_max_age_hours)
                 text = _extract_report_text(hit)
                 docs.append(
                     SourceDocument(
