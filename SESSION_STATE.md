@@ -53,7 +53,7 @@ MORNING RADIO v0.1을 수동 end-to-end 검증까지 끌고 가고, 그 전에 �
 ## Known risks
 
 - `gemini-3.8-flash`, `gemini-3.8-flash-tts` 모델명이 유효한지 실행으로 확인하지 못했다.
-- Windows 로컬의 기본 `python`이 다른 프로젝트용(`C:\rehab-tools`)이므로 이 프로젝트는 `.venv`로 분리해서 쓴다.
+- Windows 로컬의 기본 `python`을 다른 프로젝트와 공유하므로 이 프로젝트는 `.venv`로 분리해서 쓴다.
 
 ## Last validated
 
