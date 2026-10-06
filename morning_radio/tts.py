@@ -3,9 +3,8 @@ from __future__ import annotations
 import base64
 from pathlib import Path
 
-from google import genai
-
 from .config import Settings
+from .gemini import make_client
 from .models import EpisodePlan, PodcastSegment
 from .retry import call_with_retry
 
@@ -45,7 +44,7 @@ def synthesize_segments(
     if not settings.gemini_api_key:
         raise TTSError("GEMINI_API_KEY가 필요합니다.")
     output_dir.mkdir(parents=True, exist_ok=True)
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = make_client(settings.gemini_api_key)
     paths: list[Path] = []
 
     for index, segment in enumerate(plan.segments, start=1):
