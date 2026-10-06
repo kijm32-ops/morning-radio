@@ -19,10 +19,18 @@ _TRANSIENT_MARKERS = (
     "rate limit",
 )
 _STATUS_IN_MESSAGE = re.compile(r"error code:\s*(\d{3})", re.IGNORECASE)
+# 하루 한도 소진은 몇 초 뒤 재시도해도 풀리지 않고, 실패한 요청도 한도에 들어갈 수 있다.
+_DAILY_QUOTA = re.compile(r"per day|daily|retry in \d+h", re.IGNORECASE)
+
+
+def is_daily_quota_exhausted(exc: BaseException) -> bool:
+    return bool(_DAILY_QUOTA.search(str(exc)))
 
 
 def is_transient(exc: BaseException) -> bool:
-    """일시적인 서버/쿼터 오류인지 판단한다. 인증·요청 오류(4xx)는 재시도하지 않는다."""
+    """일시적인 서버/쿼터 오류인지 판단한다. 인증·요청 오류(4xx)와 하루 한도 소진은 재시도하지 않는다."""
+    if is_daily_quota_exhausted(exc):
+        return False
     if "timeout" in type(exc).__name__.lower():
         return True
     status = getattr(exc, "status_code", None)
