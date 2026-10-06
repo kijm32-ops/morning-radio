@@ -6,3 +6,4 @@ pypdf>=5,<7
 python-dotenv>=1,<2
 cryptography>=46,<51
 pytest>=8,<9
+tzdata>=2024.1
