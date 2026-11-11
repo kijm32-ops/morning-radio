@@ -37,7 +37,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        run: python -m morning_radio.main --source-mode '${{ inputs.source_mode }}'
+          SOURCE_MODE: ${{ inputs.source_mode }}
+        run: python -m morning_radio.main --source-mode "$SOURCE_MODE"
       - name: Upload diagnostic artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -88,8 +89,12 @@ jobs:
           KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
           KAKAO_TOKEN_ENCRYPTION_KEY: ${{ secrets.KAKAO_TOKEN_ENCRYPTION_KEY }}
-        run: python -m morning_radio.notify --plan output/episode-plan.json --url '${{ needs.deploy.outputs.page_url }}'
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: python -m morning_radio.notify --plan output/episode-plan.json --url "$PAGE_URL"
+      # Runs even when the message step failed: Kakao may already have issued a
+      # new refresh token, and losing it means setting Kakao up again by hand.
       - name: Persist rotated Kakao refresh token
+        if: ${{ !cancelled() }}
         run: |
           set -e
           git config user.name "github-actions[bot]"
@@ -99,5 +104,6 @@ jobs:
             echo "Kakao refresh token unchanged."
           else
             git commit -m "chore: rotate Kakao refresh token [skip ci]"
-            git push
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
           fi
