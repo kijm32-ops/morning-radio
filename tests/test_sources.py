@@ -93,3 +93,15 @@ def test_latest_message_raises_when_all_candidates_too_old():
     headers = _recent_headers(client)
     with pytest.raises(SourceError):
         _latest_subject_message(client, headers, "[PTIS]", 36)
+
+
+def test_malformed_date_does_not_stop_collection():
+    broken = _message("WORLD BRIEFING 깨진 날짜", 1).replace(
+        b"Date: ", b"Date: not a date ", 1
+    )
+    good = _message("WORLD BRIEFING 정상", 2)
+    client = FakeImap([good, broken])
+    headers = _recent_headers(client)
+    assert len(headers) == 2
+    hit = _latest_subject_message(client, headers, "WORLD BRIEFING", 24)
+    assert hit.subject == "WORLD BRIEFING 정상"

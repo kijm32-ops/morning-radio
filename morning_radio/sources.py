@@ -103,7 +103,12 @@ def _message_datetime(msg: Message) -> datetime:
     value = msg.get("Date")
     if not value:
         return datetime.now(tz=timezone.utc)
-    parsed = parsedate_to_datetime(value)
+    try:
+        parsed = parsedate_to_datetime(value)
+    except (ValueError, TypeError, OverflowError):
+        # 날짜가 깨진 메일 한 통 때문에 전체 수집이 멈추면 안 된다. 아주 오래된
+        # 메일로 취급해 최신 브리핑 후보에서 빠지게 한다.
+        return datetime.fromtimestamp(0, tz=KST)
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(KST)
